@@ -1,6 +1,7 @@
 from math import ceil
 import pygame as pg
 import sys
+import random
 
 #####################################  VARIABLES AND CONSTANTS AND FUNCTIONS #####################################
 pg.init()  # Initialise pygame.
@@ -15,7 +16,7 @@ def lsr_move(lsr_list, speed = 200):
         lsr.centery -= ceil(speed*dt)
         # Optimization. (Remove lasers which are outside the screen).
         if(lsr.bottom < 0):
-            lasers.remove(lsr)
+            lsr_list.remove(lsr)
 
 def get_time_since_start(tf, t_r):
     if(tf != 0):
@@ -26,6 +27,15 @@ def get_time_since_start(tf, t_r):
     txt_rect = txt_surf.get_rect(midbottom=(WINDOW_WIDTH/2, WINDOW_HEIGHT - 30))
     display_surface.blit(txt_surf, txt_rect)
     return(pg.draw.rect(bg_surf, color='white', rect=txt_rect.inflate(50, 50), width=8, border_radius=5))
+
+def mtr_move(mtr_list, speed = 150):
+    for mtr in mtr_list:
+        mtr.centery += ceil(speed*dt)
+        # Optimization. (Remove meteors which are outside the screen).
+        if(mtr.top > WINDOW_HEIGHT):
+            mtr_list.remove(mtr)
+
+
 
 #####################################  CREATE A WINDOW  #################################
 # Set up a window.
@@ -42,23 +52,19 @@ bg_surf = pg.image.load('./graphics/background.png').convert()
 # Laser.
 lasers = []  # To maintain all lasers.
 laser_surf = pg.image.load('./graphics/laser.png').convert_alpha()
-# laser_rect = laser_surf.get_rect(midbottom=ship_rect.center)
 
 # Creating text.
 font1 = pg.font.Font('./graphics/subatomic.ttf', 40)
-# txt_surf = font1.render(f"Score: {pg.time.get_ticks()}", True, (255, 255, 255))  # AntiAlias (bool) : smooth out edges of font.
-# txt_rect = txt_surf.get_rect(midbottom=(WINDOW_WIDTH/2, WINDOW_HEIGHT - 25))
 
-##############################################  TIME IN PYGAME  ##############################################
-# Pygame can get the time since pygame.init() was called.
-# We can create repeated timers.
+# Meteors.
+meteor_timer = pg.event.custom_type()  # custom event (recurring timer).
+pg.time.set_timer(meteor_timer, 1000)  # pygame calls this method every 500 milliseconds ==> gives event of custom_type as set above.
 
-##############################  CREATING A TIMER  ################################
-# Check start time and end time (current time), their difference can be used.
+meteor_list = []
+meteor_surf = pg.image.load('./graphics/meteor.png').convert_alpha()
 
-##############################################################################################################
 # Set up a clock.
-clk = pg.time.Clock()   # But what if the game runs even slower?.
+clk = pg.time.Clock()
 
 # Ideally, we don't want to limit the frame rate, so that the game is 'fluid'.
 
@@ -73,10 +79,16 @@ while(True):
         if(event.type == pg.MOUSEBUTTONDOWN):
             # Applying timer logic to limit how fast (once every half second) lasers can be shot,
             # else, game would become too easy.
-            if(pg.time.get_ticks() - last_fire_time >= 500):
+            if(pg.time.get_ticks() - last_fire_time >= 400):
                 laser_rect = laser_surf.get_rect(midbottom=ship_rect.center)
                 lasers.append(laser_rect)
                 last_fire_time = pg.time.get_ticks()
+
+        if(event.type == meteor_timer):
+            x_cor = random.randint(meteor_surf.get_width() + 5, WINDOW_WIDTH - meteor_surf.get_width() - 5)
+            y_cor = random.randint(-100, -50)  # So that meteors would be differently spaced.
+            meteor_rect = meteor_surf.get_rect(midbottom=(x_cor, y_cor))
+            meteor_list.append(meteor_rect)
 
     # Get delta time.
     dt = clk.tick(120)/1000  # in milliseconds.
@@ -86,21 +98,21 @@ while(True):
     
     # Applying delta time concept for movement.
     lsr_move(lasers)
-
-    # Get time since game started (since pg.init() was called).
-    # time_since_start = pg.time.get_ticks() # milliseconds in seconds.
+    mtr_move(meteor_list)
 
     # 2.) Update elements.
     display_surface.fill("black")
     display_surface.blit(bg_surf, (0, 0))
     
-    # display_surface.blit(txt_surf, txt_rect)
-    # pg.draw.rect(bg_surf, color='white', rect=txt_rect.inflate(30, 30), width=8, border_radius=5)
-    
-    # Using some temporary variables to display updated values such as time or score.
+    # Using some temporary variables to display updated values such as time or score,
+    # This will help in removing/hiding older rectangles which were drawn.
     t_r = get_time_since_start(tf, t_r)
     tf += 1
     
+    # Display meteors.
+    for mtr in meteor_list:
+        display_surface.blit(meteor_surf, mtr)
+
     # Display lasers.
     for lsr in lasers:
         display_surface.blit(laser_surf, lsr)
