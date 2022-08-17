@@ -28,14 +28,22 @@ def get_time_since_start(tf, t_r):
     display_surface.blit(txt_surf, txt_rect)
     return(pg.draw.rect(bg_surf, color='white', rect=txt_rect.inflate(50, 50), width=8, border_radius=5))
 
-def mtr_move(mtr_list, speed = 150):
-    for mtr in mtr_list:
-        mtr.centery += ceil(speed*dt)
+def mtr_move(mtr_list, speed = 180):
+    for (mtr, dir) in mtr_list:
+        # mtr.centery += ceil(speed*dt)
+        mtr.center += (dir*speed*dt)
         # Optimization. (Remove meteors which are outside the screen).
         if(mtr.top > WINDOW_HEIGHT):
-            mtr_list.remove(mtr)
+            mtr_list.remove((mtr, dir))
 
+#######################################  VECTOR2  #########################################
+# vector2 can be thought of as a (2 x 1) matrix --> like a tuple of (x, y).
+# 5 * (x, y) = (5x, 5y); 4.3 * (x, y) = (4.3x, 4.3y)
+# Let rect.center = (30, 19), then, rect.center + (10, 17) moves rect.center to (40, 36).
+# Hence, we may use: rect.center += direction * speed * DT. (direction --> vector2).
+# Moving any point of a rect moves all points of that rect relative to the one being moved.
 
+###########################################################################################
 
 #####################################  CREATE A WINDOW  #################################
 # Set up a window.
@@ -66,8 +74,6 @@ meteor_surf = pg.image.load('./graphics/meteor.png').convert_alpha()
 # Set up a clock.
 clk = pg.time.Clock()
 
-# Ideally, we don't want to limit the frame rate, so that the game is 'fluid'.
-
 while(True):
     # 1.) Inputs (event loop).
     for event in pg.event.get():
@@ -78,7 +84,6 @@ while(True):
 
         if(event.type == pg.MOUSEBUTTONDOWN):
             # Applying timer logic to limit how fast (once every half second) lasers can be shot,
-            # else, game would become too easy.
             if(pg.time.get_ticks() - last_fire_time >= 400):
                 laser_rect = laser_surf.get_rect(midbottom=ship_rect.center)
                 lasers.append(laser_rect)
@@ -87,8 +92,11 @@ while(True):
         if(event.type == meteor_timer):
             x_cor = random.randint(meteor_surf.get_width() + 5, WINDOW_WIDTH - meteor_surf.get_width() - 5)
             y_cor = random.randint(-100, -50)  # So that meteors would be differently spaced.
+            
+            direction = pg.math.Vector2(random.uniform(-0.5, 0.5), 1)
+            
             meteor_rect = meteor_surf.get_rect(midbottom=(x_cor, y_cor))
-            meteor_list.append(meteor_rect)
+            meteor_list.append((meteor_rect, direction))
 
     # Get delta time.
     dt = clk.tick(120)/1000  # in milliseconds.
@@ -110,7 +118,7 @@ while(True):
     tf += 1
     
     # Display meteors.
-    for mtr in meteor_list:
+    for (mtr, dir) in meteor_list:
         display_surface.blit(meteor_surf, mtr)
 
     # Display lasers.
