@@ -4,17 +4,18 @@ import sys
 import random
 
 #####################################  VARIABLES AND CONSTANTS AND FUNCTIONS #####################################
-pg.init()  # Initialise pygame.
+pg.init()
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 tf = 0
 t_r = None
 last_fire_time = -1
+game_score = 0
 
 def lsr_move(lsr_list, speed = 200):
     for lsr in lsr_list:
         lsr.centery -= ceil(speed*dt)
-        # Optimization. (Remove lasers which are outside the screen).
+        
         if(lsr.bottom < 0):
             lsr_list.remove(lsr)
 
@@ -22,30 +23,28 @@ def get_time_since_start(tf, t_r):
     if(tf != 0):
         pg.draw.rect(bg_surf, color=(42,45,51), rect=t_r, width=8, border_radius=5)
 
-    time_txt = f"Score: {pg.time.get_ticks()//1000}"
-    txt_surf = font1.render(time_txt, True, (255, 255, 255))  # AntiAlias (bool) : smooth out edges of font.
+    time_txt = f"Score: {game_score}"
+    txt_surf = font1.render(time_txt, True, (255, 255, 255))
     txt_rect = txt_surf.get_rect(midbottom=(WINDOW_WIDTH/2, WINDOW_HEIGHT - 30))
     display_surface.blit(txt_surf, txt_rect)
     return(pg.draw.rect(bg_surf, color='white', rect=txt_rect.inflate(50, 50), width=8, border_radius=5))
 
 def mtr_move(mtr_list, speed = 180):
     for (mtr, dir) in mtr_list:
-        # mtr.centery += ceil(speed*dt)
+        
         mtr.center += (dir*speed*dt)
-        # Optimization. (Remove meteors which are outside the screen).
+        
         if(mtr.top > WINDOW_HEIGHT):
             mtr_list.remove((mtr, dir))
 
-#######################################  VECTOR2  #########################################
-# vector2 can be thought of as a (2 x 1) matrix --> like a tuple of (x, y).
-# 5 * (x, y) = (5x, 5y); 4.3 * (x, y) = (4.3x, 4.3y)
-# Let rect.center = (30, 19), then, rect.center + (10, 17) moves rect.center to (40, 36).
-# Hence, we may use: rect.center += direction * speed * DT. (direction --> vector2).
-# Moving any point of a rect moves all points of that rect relative to the one being moved.
+############################################  COLLISIONS  ##############################################
+# Detect collisions/overlaps between 2 rects (rects containing objects are checked). --> IN THIS FILE.
+# Check if a point lies inside a rect.
+# Check how close 2 objects are to each other (usually for round objects).
+# Pixel-Perfect Collisions. (Every pixel inside each surface is checked to see if any overlap is there). (MORE PRECISE/COSTLY).
+#########################################################################################################
 
-###########################################################################################
-
-#####################################  CREATE A WINDOW  #################################
+#############################################  CREATE A WINDOW  #########################################
 # Set up a window.
 display_surface = pg.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pg.display.set_caption("Asteroid Shooter")  # Set title of window.
@@ -74,18 +73,27 @@ meteor_surf = pg.image.load('./graphics/meteor.png').convert_alpha()
 # Set up a clock.
 clk = pg.time.Clock()
 
+# Import sounds.
+lsr_sound = pg.mixer.Sound('./sounds/laser.ogg')
+blast_sound = pg.mixer.Sound('./sounds/explosion.wav')
+bg_music = pg.mixer.Sound('./sounds/music.wav')
+
+bg_music.play(loops = -1)  # loop bg_music forever.
+
 while(True):
     # 1.) Inputs (event loop).
     for event in pg.event.get():
         if(event.type == pg.QUIT):
             pg.quit()
             print("Game Closed!")
+            print(f"Final Score: {game_score}")
             sys.exit()
 
         if(event.type == pg.MOUSEBUTTONDOWN):
             # Applying timer logic to limit how fast (once every half second) lasers can be shot,
             if(pg.time.get_ticks() - last_fire_time >= 400):
                 laser_rect = laser_surf.get_rect(midbottom=ship_rect.center)
+                lsr_sound.play()  # Play lsr_sound.
                 lasers.append(laser_rect)
                 last_fire_time = pg.time.get_ticks()
 
@@ -107,6 +115,28 @@ while(True):
     # Applying delta time concept for movement.
     lsr_move(lasers)
     mtr_move(meteor_list)
+
+    # Check for collisions between meteors and ship.
+    for (mtr, dir) in meteor_list:
+        is_colliding = ship_rect.colliderect(mtr)  # boolean.
+        # Game over on collision.
+        if(is_colliding):
+            pg.quit()
+            print("Game Over!")
+            print(f"Final Score: {game_score}")
+            sys.exit()
+
+    # Check for collisions between lasers and meteors.
+    for (mtr, dir) in meteor_list:
+        for lsr in lasers:
+            is_blast = lsr.colliderect(mtr)  # boolean.
+            if(is_blast):
+                blast_sound.play()  # Play blast_sound.
+                lasers.remove(lsr)
+                meteor_list.remove((mtr, dir))
+                game_score += 1
+
+
 
     # 2.) Update elements.
     display_surface.fill("black")
