@@ -16,10 +16,8 @@ class Ship(pg.sprite.Sprite):
         self.image = pg.image.load('../graphics/ship.png').convert_alpha()  # This could also be text.
         self.rect = self.image.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
 
-        # Attribute for creating timer (for laser shots).
         self.since_last_shot = -1000
 
-        # Add a mask.
         self.mask = pg.mask.from_surface(self.image)  # This attribute "has to be" called 'mask'.
 
     def pos_input(self):
@@ -29,6 +27,7 @@ class Ship(pg.sprite.Sprite):
     def shoot_lsr(self):
         mouse_input = pg.mouse.get_pressed()[0]
         if(mouse_input and (pg.time.get_ticks() - self.since_last_shot > 500)):
+            lsr_music.play()
             new_laser = Laser(my_ship, lsr_grp)
             self.since_last_shot = pg.time.get_ticks()
 
@@ -61,6 +60,7 @@ class Laser(pg.sprite.Sprite):
     def mtr_collide(self):
         global game_score
         if(pg.sprite.spritecollide(self, mtr_grp, True, pg.sprite.collide_mask)):
+            mtr_blast_music.play()
             game_score += 1  # Increment score.
             pg.sprite.Sprite.kill(self)  # Removing Laser which collided.
             
@@ -74,7 +74,6 @@ class Laser(pg.sprite.Sprite):
             self.kill()  # Destroy this sprite.
 
 ################################  METEOR CLASS  ###############################
-# Timer for creating meteors.
 meteor_timer = pg.event.custom_type()
 pg.time.set_timer(meteor_timer, 800)
 
@@ -88,7 +87,7 @@ class Meteor(pg.sprite.Sprite):
         
         self.initial_surf = self.image
         self.rect = self.image.get_rect(center=position)
-        # Add a mask.
+    
         self.mask = pg.mask.from_surface(self.image)
 
         self.pos = pg.math.Vector2(self.rect.center)
@@ -100,12 +99,11 @@ class Meteor(pg.sprite.Sprite):
 
     def rotate_mtr(self):
         self.rotation += self.rotation_speed*dt
-        self.image = pg.transform.rotozoom(self.initial_surf, self.rotation, scale=1)  # To fix wobbly movement.
-        self.rect = self.image.get_rect(center=self.rect.center)  # To fix wobbly movement. (Still persists at high speeds).
+        self.image = pg.transform.rotozoom(self.initial_surf, self.rotation, scale=1)
+        self.rect = self.image.get_rect(center=self.rect.center)
         self.mask = pg.mask.from_surface(self.image)  # Updating the mask.
 
     def update(self):
-        # Moving the meteors.
         self.pos += self.direction*self.speed*dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
         self.rotate_mtr()
@@ -113,7 +111,6 @@ class Meteor(pg.sprite.Sprite):
             self.kill()  # Destroy this sprite.
 
 #############################  SCORE CLASS  ##################################
-# It is simple, so doesn't necessarily need to be a child of Sprite() class.
 class Score:
     def __init__(self):
         self.font1 = pg.font.Font('../graphics/subatomic.ttf', 40)
@@ -124,15 +121,6 @@ class Score:
         txt_rect = txt_surf.get_rect(midbottom=(WINDOW_WIDTH/2, WINDOW_HEIGHT - 25))
         display_surface.blit(txt_surf, txt_rect)
         pg.draw.rect(display_surface, "white", txt_rect.inflate(30, 30), width=8, border_radius=5)
-
-#############################  COLLISIONS  ##################################
-# Rectangular Collisions.
-# pygame.sprit.spritecollide(sprite, group, DoKill). (DoKill --> for group, won't destroy the sprite object).
-
-# Better collisions using 'masks'. [Pixel-Perfect Collisions].
-# A seperate object that checks which pixels are occupied inside a surface.
-
-
 
 ##############################  CREATE A WINDOW  ##############################
 # Set up the window.
@@ -154,6 +142,12 @@ mtr_grp = pg.sprite.Group()
 my_ship = Ship(ship_grp)
 my_txt = Score()
 
+# Sounds.
+lsr_music = pg.mixer.Sound('../sounds/laser.ogg')
+mtr_blast_music = pg.mixer.Sound('../sounds/explosion.wav')
+bg_music = pg.mixer.Sound('../sounds/music.wav')
+bg_music.play(loops=-1)
+
 # Game loop.
 while(True):
     # Event loop.
@@ -170,7 +164,7 @@ while(True):
     # Delta time.
     dt = clk.tick(120)/1000
 
-    # Displat Background.
+    # Display Background.
     display_surface.blit(bg_surf, (0,0))
 
     # Update sprites.
