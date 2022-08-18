@@ -25,7 +25,7 @@ class Ship(pg.sprite.Sprite):
     def shoot_lsr(self):
         mouse_input = pg.mouse.get_pressed()[0]
         if(mouse_input and (pg.time.get_ticks() - self.since_last_shot > 500)):  # Computer checks this every frame, a 'click' lasts more than one frame. To fix this, we need a timer.
-            print("shoot")
+            new_laser = Laser(my_ship, lsr_grp)
             self.since_last_shot = pg.time.get_ticks()
 
     def update(self):
@@ -40,13 +40,19 @@ class Laser(pg.sprite.Sprite):
         self.image = pg.image.load('../graphics/laser.png').convert_alpha()
         self.rect = self.image.get_rect(midbottom=my_ship.rect.center)
 
-##############################  UPDATING SPRITES  #############################
-# We can run any kind of code inside a sprite class.
-# Like inputs, timers, heath, animations or physics.
-# The group calls a method 'update()' for all sprites inside it.
-# We can create many methods and then call them inside update method, then call only the update method.
+        # Position and direction attributes as a vector2 (float-based position).
+        self.pos = pg.math.Vector2(self.rect.center)
+        self.direction = pg.math.Vector2((0, -1))
+        self.speed = 350
 
-# NOTE: Inside a class, we can not get access to the event loop.
+    def update(self):
+        # Moving the laser.
+        self.pos += self.direction*self.speed*dt
+        self.rect.center = (round(self.pos.x), round(self.pos.y))
+
+#############################  MOVING LASERS  ################################
+# To address the problems with delta time, we are not going to store the position
+# in rect but rather in a vector2. [rect --> (int, int)] whereas [vector2 --> (float, float)].
 
 ###############################################################################
 
@@ -67,7 +73,7 @@ lsr_grp = pg.sprite.Group()
 
 # Create Instances.
 my_ship = Ship(ship_grp)
-my_laser = Laser(ship=my_ship, groups=lsr_grp)
+# my_laser = Laser(ship=my_ship, groups=lsr_grp)
 
 # Game loop.
 while(True):
@@ -79,7 +85,7 @@ while(True):
             sys.exit()
 
     # Delta time.
-    dt = clk.tick()/1000  # No limit for frame rate specified yet!
+    dt = clk.tick(120)/1000  # No limit for frame rate specified yet!
 
     # Displat Background.
     display_surface.blit(bg_surf, (0,0))
@@ -90,6 +96,7 @@ while(True):
 
     # Update sprites.
     ship_grp.update()
+    lsr_grp.update()
 
     # Keep window displayed.
     pg.display.update()
