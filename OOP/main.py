@@ -1,7 +1,5 @@
 import pygame as pg
 import sys
-# Pygame was created to be used using classes.
-# Each object --> contains both the rect and the surface.
 
 ##################### VARIALBLES AND CONSTANTS AND FUNCTIONS  #######################
 pg.init()
@@ -13,30 +11,44 @@ WINDOW_WIDTH = 1280
 class Ship(pg.sprite.Sprite):
     def __init__(self, groups):
         # Initialise parent class.
-        super().__init__(groups)  # groups is passed to parent class. (This object will be added to these groups).
-        # Create surface (called image inside Sprite class) for ship.
+        super().__init__(groups)  # groups is passed to parent class.
         self.image = pg.image.load('../graphics/ship.png').convert_alpha()  # This could also be text.
-        # Create rect for ship.
         self.rect = self.image.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
-# pg.sprite.Sprite()  # Use this to see definition of Sprit() [parent class of Ship()].
+
+        # Attribute for creating timer (for laser shots).
+        self.since_last_shot = -1000
+
+    def pos_input(self):
+        pos = pg.mouse.get_pos()
+        self.rect.center = pos
+    
+    def shoot_lsr(self):
+        mouse_input = pg.mouse.get_pressed()[0]
+        if(mouse_input and (pg.time.get_ticks() - self.since_last_shot > 500)):  # Computer checks this every frame, a 'click' lasts more than one frame. To fix this, we need a timer.
+            print("shoot")
+            self.since_last_shot = pg.time.get_ticks()
+
+    def update(self):
+        self.pos_input()
+        self.shoot_lsr()
+        # print("update")
 
 ###############################  LASER CLASS  ################################
 class Laser(pg.sprite.Sprite):
     def __init__(self, ship, groups):
         super().__init__(groups)
-        # Create surface (image) for laser
         self.image = pg.image.load('../graphics/laser.png').convert_alpha()
-        # Create rect for laser.
         self.rect = self.image.get_rect(midbottom=my_ship.rect.center)
 
-################################  SPRITE  ####################################
-# Sprites are classes, each sprite must have a rect and a surface.
-# These allows us to control graphics, positions, input and updates for objects.
-# Each visible element (as far as possible) should be a sprite.
+##############################  UPDATING SPRITES  #############################
+# We can run any kind of code inside a sprite class.
+# Like inputs, timers, heath, animations or physics.
+# The group calls a method 'update()' for all sprites inside it.
+# We can create many methods and then call them inside update method, then call only the update method.
 
-# To draw a sprite, it needs to be put into a group.
-# The group then draws the sprite on a surface (usually the display surface).
-# The group can also update the sprite.
+# NOTE: Inside a class, we can not get access to the event loop.
+
+###############################################################################
 
 ##############################  CREATE A WINDOW  ##############################
 # Set up the window.
@@ -50,13 +62,10 @@ bg_surf = pg.image.load('../graphics/background.png').convert()
 clk = pg.time.Clock()
 
 # Sprite groups.
-ship_grp = pg.sprite.GroupSingle()  # GroupSingle() is used for group of single object, adding another object to it will remove the current one.
+ship_grp = pg.sprite.GroupSingle()
 lsr_grp = pg.sprite.Group()
 
-# Create a instance of Ship() class.
-# my_ship = Ship()
-# ship_grp.add(my_ship)  # Add this instance to a group.
-# We can add a parameter in class declaration to easily add instances to groups.
+# Create Instances.
 my_ship = Ship(ship_grp)
 my_laser = Laser(ship=my_ship, groups=lsr_grp)
 
@@ -78,7 +87,9 @@ while(True):
     # Display Sprites.
     lsr_grp.draw(display_surface)
     ship_grp.draw(display_surface)
-    
+
+    # Update sprites.
+    ship_grp.update()
 
     # Keep window displayed.
     pg.display.update()
