@@ -55,20 +55,53 @@ meteor_timer = pg.event.custom_type()
 pg.time.set_timer(meteor_timer, 800)
 
 class Meteor(pg.sprite.Sprite):
-    def __init__(self, position,groups):
+    def __init__(self, position, groups):
         super().__init__(groups)
         self.image = pg.image.load('../graphics/meteor.png').convert_alpha()
+        # Randomize meteor size.
+        scale_factor = random.choice([0.5, 1, 1.5, 2])
+        self.image = pg.transform.scale(self.image, (scale_factor*self.image.get_width(), scale_factor*self.image.get_height()))
+        
+        self.initial_surf = self.image
         self.rect = self.image.get_rect(center=position)
 
         self.pos = pg.math.Vector2(self.rect.center)
         self.direction = pg.math.Vector2((random.uniform(-0.5, 0.5), 1))
         self.speed = 200
 
+        # Randomize Rotation.
+        # Rotating a surface lowers the quality a tiny bit --> repeating it is MEMORY-INTENSIVE.
+        # If we rotate the same surface again and again, we will run out of memory.
+        # Thus, we instead use a initial_surf which itself never changes.
+        # It is rotated by different angles on different calls to the method.
+
+        self.rotation = 0
+        self.rotation_speed = random.randint(20, 50)
+
+    def rotate_mtr(self):
+        self.rotation += self.rotation_speed*dt
+        # self.image = pg.transform.rotate(self.initial_surf, self.rotation)
+        self.image = pg.transform.rotozoom(self.initial_surf, self.rotation, scale=1)  # To fix wobbly movement.
+        self.rect = self.image.get_rect(center=self.rect.center)  # To fix wobbly movement. (Still persists at high speeds).
+
     def update(self):
         # Moving the meteors.
         self.pos += self.direction*self.speed*dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
+        self.rotate_mtr()
 
+#############################  SCORE CLASS  ##################################
+# It is simple, so doesn't necessarily need to be a child of Sprite() class.
+class Score:
+    def __init__(self):
+        self.font1 = pg.font.Font('../graphics/subatomic.ttf', 40)
+
+    def display(self):
+        score_txt = f"Score: {pg.time.get_ticks()//1000}"
+        txt_surf = self.font1.render(score_txt, True, "white")
+        txt_rect = txt_surf.get_rect(midbottom=(WINDOW_WIDTH/2, WINDOW_HEIGHT - 25))
+        display_surface.blit(txt_surf, txt_rect)
+        pg.draw.rect(display_surface, "white", txt_rect.inflate(30, 30), width=8, border_radius=5)
 
 ##############################  CREATE A WINDOW  ##############################
 # Set up the window.
@@ -88,6 +121,7 @@ mtr_grp = pg.sprite.Group()
 
 # Create Instances.
 my_ship = Ship(ship_grp)
+my_txt = Score()
 
 # Game loop.
 while(True):
@@ -108,16 +142,16 @@ while(True):
     # Displat Background.
     display_surface.blit(bg_surf, (0,0))
 
-    # Display Sprites.
-    mtr_grp.draw(display_surface)
-    lsr_grp.draw(display_surface)
-    ship_grp.draw(display_surface)
-    
-
     # Update sprites.
     ship_grp.update()
     lsr_grp.update()
     mtr_grp.update()
+
+    # Display Sprites.
+    mtr_grp.draw(display_surface)
+    lsr_grp.draw(display_surface)
+    ship_grp.draw(display_surface)
+    my_txt.display()
 
     # Keep window displayed.
     pg.display.update()
