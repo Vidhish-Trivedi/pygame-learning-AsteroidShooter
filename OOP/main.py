@@ -1,5 +1,6 @@
 import pygame as pg
 import sys
+import random
 
 ##################### VARIALBLES AND CONSTANTS AND FUNCTIONS  #######################
 pg.init()
@@ -7,7 +8,6 @@ WINDOW_HEIGHT = 720
 WINDOW_WIDTH = 1280
 
 ############################## SHIP CLASS  ###########################
-# Inherit from Sprite() class of pygame.
 class Ship(pg.sprite.Sprite):
     def __init__(self, groups):
         # Initialise parent class.
@@ -31,7 +31,6 @@ class Ship(pg.sprite.Sprite):
     def update(self):
         self.pos_input()
         self.shoot_lsr()
-        # print("update")
 
 ###############################  LASER CLASS  ################################
 class Laser(pg.sprite.Sprite):
@@ -46,15 +45,30 @@ class Laser(pg.sprite.Sprite):
         self.speed = 350
 
     def update(self):
-        # Moving the laser.
+        # Moving the lasers.
         self.pos += self.direction*self.speed*dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
 
-#############################  MOVING LASERS  ################################
-# To address the problems with delta time, we are not going to store the position
-# in rect but rather in a vector2. [rect --> (int, int)] whereas [vector2 --> (float, float)].
+################################  METEOR CLASS  ###############################
+# Timer for creating meteors.
+meteor_timer = pg.event.custom_type()
+pg.time.set_timer(meteor_timer, 800)
 
-###############################################################################
+class Meteor(pg.sprite.Sprite):
+    def __init__(self, position,groups):
+        super().__init__(groups)
+        self.image = pg.image.load('../graphics/meteor.png').convert_alpha()
+        self.rect = self.image.get_rect(center=position)
+
+        self.pos = pg.math.Vector2(self.rect.center)
+        self.direction = pg.math.Vector2((random.uniform(-0.5, 0.5), 1))
+        self.speed = 200
+
+    def update(self):
+        # Moving the meteors.
+        self.pos += self.direction*self.speed*dt
+        self.rect.center = (round(self.pos.x), round(self.pos.y))
+
 
 ##############################  CREATE A WINDOW  ##############################
 # Set up the window.
@@ -70,10 +84,10 @@ clk = pg.time.Clock()
 # Sprite groups.
 ship_grp = pg.sprite.GroupSingle()
 lsr_grp = pg.sprite.Group()
+mtr_grp = pg.sprite.Group()
 
 # Create Instances.
 my_ship = Ship(ship_grp)
-# my_laser = Laser(ship=my_ship, groups=lsr_grp)
 
 # Game loop.
 while(True):
@@ -84,19 +98,26 @@ while(True):
             print("Game Closed!")
             sys.exit()
 
+        if(event.type == meteor_timer):
+            position = (random.randint(-50, WINDOW_WIDTH + 50), random.randint(-100, -50))
+            new_mtr = Meteor(position, mtr_grp)
+
     # Delta time.
-    dt = clk.tick(120)/1000  # No limit for frame rate specified yet!
+    dt = clk.tick(120)/1000
 
     # Displat Background.
     display_surface.blit(bg_surf, (0,0))
 
     # Display Sprites.
+    mtr_grp.draw(display_surface)
     lsr_grp.draw(display_surface)
     ship_grp.draw(display_surface)
+    
 
     # Update sprites.
     ship_grp.update()
     lsr_grp.update()
+    mtr_grp.update()
 
     # Keep window displayed.
     pg.display.update()
